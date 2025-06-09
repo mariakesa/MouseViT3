@@ -369,7 +369,8 @@ class MultiTaskLogRegStep:
             Xe_train = np.apply_along_axis(lambda x: clr(x + 1e-6), 1, Xe_train_raw).astype(np.float32)
             Xe_test = np.apply_along_axis(lambda x: clr(x + 1e-6), 1, Xe_test_raw).astype(np.float32)
 
-            Xe_train_perm = Xe_train[rng.permutation(Xe_train.shape[0])]
+            #Xe_train_perm = Xe_train[rng.permutation(Xe_train.shape[0])]
+            Xe_train_perm = np.array([vec[rng.permutation(vec.shape[0])] for vec in Xe_train])
 
             # Datasets
             train_ds_real = StimNeuronDataset(Xe_train, Xn_train, list(range(n_neurons)))
@@ -389,7 +390,9 @@ class MultiTaskLogRegStep:
                     for xb, nid, yb in train_loader:
                         xb, nid, yb = xb, nid.long(), yb.float()
                         preds = model(xb, nid)
-                        loss = F.binary_cross_entropy(preds, yb)
+                        weights = torch.where(yb == 1, torch.tensor(100.0), torch.tensor(1.0))
+                        loss = F.binary_cross_entropy(preds, yb, weight=weights)
+                        #loss=F.binary_cross_entropy(preds, yb)
                         opt.zero_grad()
                         loss.backward()
                         opt.step()
@@ -450,7 +453,7 @@ class MultiTaskLogRegStep:
         data['multi_task_event_nll_perm'] = nll_perm
         data['multi_task_event_nll_delta'] = nll_real - nll_perm
 
-        with open("multi_task_nll_event_only.pkl", "wb") as f:
+        with open("multi_task_nll_event_only_random.pkl", "wb") as f:
             pickle.dump({
                 'real': nll_real,
                 'perm': nll_perm,
